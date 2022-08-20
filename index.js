@@ -4,7 +4,7 @@ var statuses = require('statuses');
 var production = process.env.NODE_ENV === 'production';
 
 module.exports = function () {
-  return function apiErrorHandler(err, req, res, next) {
+  return function errorHandlerJson(err, req, res, next) {
     var status = err.status || err.statusCode || 500;
     if (status < 400) status = 500;
     res.statusCode = status;
@@ -20,7 +20,7 @@ module.exports = function () {
     // internal server errors
     if (status >= 500) {
       console.error(err.stack);
-      body.message = statuses[status];
+      body.message = statuses.message[status];
       res.json(body);
       return;
     }

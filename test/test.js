@@ -6,30 +6,33 @@ var assert = require('assert');
 
 var handler = require('..');
 
-describe('API Error Handler', function () {
-  it('5xx', function (done) {
+describe('Error Handler JSON', () => {
+  it('5xx', (done) => {
     var app = express();
-    app.use(function (req, res, next) {
+    app.use((req, res, next) => {
       next(error(501, 'lol'));
     });
     app.use(handler());
 
-    request(app.listen())
-    .get('/')
-    .expect(501)
-    .end(function (err, res) {
-      assert.ifError(err);
+    const server = app.listen()
 
-      var body = res.body;
-      assert.equal(body.message, 'Not Implemented');
-      assert.equal(body.status, 501);
-      done();
-    })
+    request(server)
+      .get('/')
+      .expect(501)
+      .end((err, res) => {
+        assert.ifError(err);
+
+        var body = res.body;
+        assert.equal(body.message, 'Not Implemented');
+        assert.equal(body.status, 501);
+        server.close()
+        done();
+      })
   })
 
-  it('4xx', function (done) {
+  it('4xx', (done) => {
     var app = express();
-    app.use(function (req, res, next) {
+    app.use((req, res, next) => {
       next(error(401, 'lol', {
         type: 'a',
         code: 'b'
@@ -37,18 +40,21 @@ describe('API Error Handler', function () {
     });
     app.use(handler());
 
-    request(app.listen())
-    .get('/')
-    .expect(401)
-    .end(function (err, res) {
-      assert.ifError(err);
+    const server = app.listen()
 
-      var body = res.body;
-      assert.equal(body.message, 'lol');
-      assert.equal(body.status, 401);
-      assert.equal(body.type, 'a');
-      assert.equal(body.code, 'b');
-      done();
-    })
+    request(server)
+      .get('/')
+      .expect(401)
+      .end((err, res) => {
+        assert.ifError(err);
+
+        var body = res.body;
+        assert.equal(body.message, 'lol');
+        assert.equal(body.status, 401);
+        assert.equal(body.type, 'a');
+        assert.equal(body.code, 'b');
+        server.close()
+        done();
+      })
   })
 })
