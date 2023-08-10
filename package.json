@@ -19,6 +19,9 @@
   "scripts": {
     "test": "node --test"
   },
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "keywords": [
     "express",
     "error",
