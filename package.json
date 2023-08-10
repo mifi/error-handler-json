@@ -1,7 +1,7 @@
 {
   "name": "error-handler-json",
   "description": "Express error handlers for JSON APIs",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "author": "Mikael Finstad <finstaden@gmail.com> (https://mifi.no)",
   "contributors": [
     "Jonathan Ong <me@jongleberry.com> (http://jongleberry.com)"
