@@ -7,7 +7,7 @@ const { describe, it } = require('node:test');
 
 var handler = require('..');
 
-const createHandler = ({ onInternalServerError = () => {}, includeStack = false } = {}) => handler({ onInternalServerError, includeStack })
+const createHandler = ({ onInternalServerError = () => {}, includeStack } = {}) => handler({ onInternalServerError, includeStack })
 
 async function runTest(app, expectedStatus, onResponse) {
   const server = app.listen()

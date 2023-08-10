@@ -2,10 +2,8 @@
 const statuses = require('statuses');
 const httpErrors = require('http-errors')
 
-const production = process.env.NODE_ENV === 'production';
-
 module.exports = function ({
-  onInternalServerError = (err) => console.error(err.stack), includeStack = !production
+  onInternalServerError = (err) => console.error(err.stack), includeStack = false,
 } = {}) {
   return function errorHandlerJson(err, req, res, next) {
     let status = 500;
