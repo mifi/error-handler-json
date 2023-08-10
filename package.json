@@ -9,17 +9,15 @@
   "license": "MIT",
   "repository": "mifi/error-handler-json",
   "dependencies": {
+    "http-errors": "^2.0.0",
     "statuses": "^2.0.1"
   },
   "devDependencies": {
     "express": "^4.18.1",
-    "http-errors": "^2.0.0",
-    "mocha": "^10.0.0",
-    "nyc": "^15.1.0",
     "supertest": "^6.2.4"
   },
   "scripts": {
-    "test": "mocha --reporter spec"
+    "test": "node --test"
   },
   "keywords": [
     "express",

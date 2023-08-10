@@ -10,7 +10,6 @@ An error handler for JSON APIs, meant to be used with [http-errors](https://gith
 
 ## Example
 
-
 ```js
 const createError = require('http-errors');
 const errorHandler = require('error-handler-json');
@@ -28,7 +27,7 @@ A call to `/api/endpoint` will return a 400 with the following JSON response:
   "status": 400,
   "message": "Invalid data sent",
   "name": "BadRequestError",
-  "stack": "BadRequestError: ...",
+  "stack": "BadRequestError: ...", // but not in production
 }
 ```
 
@@ -36,21 +35,24 @@ A call to `/api/endpoint` will return a 400 with the following JSON response:
 
 ### .use(errorHandler([options]))
 
-Currently no options.
+#### Options
+
+- `onInternalServerError` - Called when handling an `status >= 500` error. Default: `console.error`
+- `includeStack` - Whether to include `err.stack` as a property in the returned JSON. Default: `!production`
 
 ### Errors
 
-4xx errors are exposed to the client.
-Properties exposed are:
+4xx errors are exposed to the client. Properties exposed are:
 
 - `message`
-- `type`
+- `status`
 - `name`
 - `code`
-- `status`
+- `type`
+- `stack` (optional, see `includeStack`)
+- any other own properties of the `Error` object, *except* for `http-errors` internals: `expose`, `statusCode`
 
-5xx errors are not exposed to the client.
-Instead, they are given a generic `message` as well as the `type`.
+5xx errors that don't have `expose` set to `true` are not exposed to the client. Instead, they are given a generic `message` as well as the `status`.
 
 [npm-image]: https://img.shields.io/npm/v/error-handler-json.svg?style=flat-square
 [npm-url]: https://npmjs.org/package/error-handler-json

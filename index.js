@@ -1,26 +1,33 @@
 
-var statuses = require('statuses');
+const statuses = require('statuses');
+const httpErrors = require('http-errors')
 
-var production = process.env.NODE_ENV === 'production';
+const production = process.env.NODE_ENV === 'production';
 
-module.exports = function () {
+module.exports = function ({
+  onInternalServerError = (err) => console.error(err.stack), includeStack = !production
+} = {}) {
   return function errorHandlerJson(err, req, res, next) {
-    var status = err.status || err.statusCode || 500;
-    if (status < 400) status = 500;
+    let status = 500;
+
+    if (httpErrors.isHttpError(err)) {
+      const maybeStatus = err.status || err.statusCode;
+      if (typeof maybeStatus === 'number' && maybeStatus >= 400) status = maybeStatus;
+    }
+
     res.statusCode = status;
 
-    var body = {
+    const body = {
       status: status
     };
 
-    // show the stacktrace when not in production
-    // TODO: make this an option
-    if (!production) body.stack = err.stack;
+    // maybe include the stacktrace
+    if (includeStack) body.stack = err.stack;
 
     // internal server errors
-    if (status >= 500) {
-      console.error(err.stack);
-      body.message = statuses.message[status];
+    if (status >= 500 && !err.expose) {
+      onInternalServerError(err);
+      body.message = err.expose ? err.message : statuses.message[status];
       res.json(body);
       return;
     }
@@ -28,9 +35,20 @@ module.exports = function () {
     // client errors
     body.message = err.message;
 
-    if (err.code) body.code = err.code;
-    if (err.name) body.name = err.name;
-    if (err.type) body.type = err.type;
+    const {
+      expose: ignored1, message: ignored2, stack: ignored3, status: ignored4, statusCode: ignored5,
+      code, name, type,
+      ...errProps
+    } = err
+
+    // always include these (maybe inherited) props, for historical reasons
+    if (code) body.code = code;
+    if (name) body.name = name;
+    if (type) body.type = type;
+
+    Object.entries(errProps).forEach(([key, value]) => {
+      body[key] = value;
+    });
 
     res.json(body);
   }

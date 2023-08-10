@@ -3,58 +3,132 @@ var error = require('http-errors');
 var request = require('supertest');
 var express = require('express');
 var assert = require('assert');
+const { describe, it } = require('node:test');
 
 var handler = require('..');
 
+const createHandler = ({ onInternalServerError = () => {}, includeStack = false } = {}) => handler({ onInternalServerError, includeStack })
+
+async function runTest(app, expectedStatus, onResponse) {
+  const server = app.listen()
+
+  return new Promise((resolve, reject) => {
+    request(server)
+    .get('/')
+    .expect(expectedStatus)
+    .end((err, res) => {
+      try {
+        assert.ifError(err);
+        onResponse(res)
+
+        resolve()
+      } catch (testErr) {
+        reject(testErr);
+      } finally {
+        server.close()
+      }
+    })
+  })
+}
+
 describe('Error Handler JSON', () => {
-  it('5xx', (done) => {
+  it('5xx', async ({ mock }) => {
+    const onInternalServerError = mock.fn();
+
     var app = express();
     app.use((req, res, next) => {
-      next(error(501, 'lol'));
+      next(error(501, 'message', {  }));
     });
-    app.use(handler());
+    app.use(createHandler({ onInternalServerError }));
 
-    const server = app.listen()
-
-    request(server)
-      .get('/')
-      .expect(501)
-      .end((err, res) => {
-        assert.ifError(err);
-
-        var body = res.body;
-        assert.equal(body.message, 'Not Implemented');
-        assert.equal(body.status, 501);
-        server.close()
-        done();
+    await runTest(app, 501, (res) => {
+      assert.deepStrictEqual(res.body, {
+        message: 'Not Implemented',
+        status: 501,
       })
+
+      assert.strictEqual(onInternalServerError.mock.callCount(), 1);
+      const arg = onInternalServerError.mock.calls[0].arguments[0];
+      assert(arg instanceof Error);
+      assert.strictEqual(arg.message, 'message');
+    })
   })
 
-  it('4xx', (done) => {
+  it('4xx', async () => {
     var app = express();
     app.use((req, res, next) => {
-      next(error(401, 'lol', {
+      next(error(400, 'Invalid data sent'));
+    });
+    app.use(createHandler());
+
+    await runTest(app, 400, (res) => {
+      assert.deepStrictEqual(res.body, {
+        message: 'Invalid data sent',
+        status: 400,
+        name: 'BadRequestError',
+      })
+    })
+  })
+
+  it('4xx with additional props', async () => {
+    var app = express();
+    app.use((req, res, next) => {
+      next(error(401, 'message', {
         type: 'a',
-        code: 'b'
+        code: 'b',
+        other: 'prop',
       }));
     });
-    app.use(handler());
+    app.use(createHandler());
 
-    const server = app.listen()
-
-    request(server)
-      .get('/')
-      .expect(401)
-      .end((err, res) => {
-        assert.ifError(err);
-
-        var body = res.body;
-        assert.equal(body.message, 'lol');
-        assert.equal(body.status, 401);
-        assert.equal(body.type, 'a');
-        assert.equal(body.code, 'b');
-        server.close()
-        done();
+    await runTest(app, 401, (res) => {
+      assert.deepStrictEqual(res.body, {
+        message: 'message',
+        status: 401,
+        type: 'a',
+        code: 'b',
+        name: 'UnauthorizedError',
+        other: 'prop',
       })
+    })
+  })
+
+  it('handle passing error', async () => {
+    var app = express();
+    app.use((req, res, next) => {
+      const err = Object.assign(new Error('test'), { code: 'ENOENT', other: 'prop' })
+      next(error(400, err));
+    });
+    app.use(createHandler());
+
+    await runTest(app, 400, (res) => {
+      assert.deepStrictEqual(res.body, {
+        message: 'test',
+        name: 'Error',
+        status: 400,
+        code: 'ENOENT',
+        other: 'prop',
+      })
+    })
+  })
+
+  it('should not process similar non http-errors errors', async () => {
+    var app = express();
+    app.use((req, res, next) => {
+      const otherError = new Error('This error should not be handled')
+      otherError.status = 400
+      otherError.statusCode = 400
+      otherError.code = 'testcode'
+      otherError.other = 'prop'
+      next(otherError);
+    });
+    app.use(createHandler());
+
+    await runTest(app, 500, (res) => {
+      assert.deepStrictEqual(res.body, {
+        message: 'Internal Server Error',
+        status: 500,
+      })
+    })
   })
 })
