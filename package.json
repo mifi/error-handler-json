@@ -30,7 +30,8 @@
     "json"
   ],
   "files": [
-    "index.js"
+    "index.js",
+    "index.d.ts"
   ],
   "types": "index.d.ts"
 }
